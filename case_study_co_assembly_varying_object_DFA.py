@@ -11,8 +11,8 @@ from MDP_TG.state_pruning import generate_matrices, create_matrices, human_robot
 import time
 
 #----real example----
-obj_num_set = [2]
-# obj_num_set = [2, 3, 4, 5, 6]
+# obj_num_set = [2]
+obj_num_set = [2, 3, 4, 5, 6]
 human_action_set = [3]
 all_matrices_dict = dict()
 states_edges_num = dict()
