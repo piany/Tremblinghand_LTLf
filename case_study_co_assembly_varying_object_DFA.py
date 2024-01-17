@@ -1,3 +1,5 @@
+import subprocess
+
 from MDP_TG.MDPST import Motion_MDPST, syn_full_plan_mdpst
 from MDP_TG.dfa import Dfa, Product_MDPST_dfa
 from networkx import single_source_shortest_path
@@ -9,7 +11,8 @@ from MDP_TG.state_pruning import generate_matrices, create_matrices, human_robot
 import time
 
 #----real example----
-obj_num_set = [2, 3, 4, 5, 6]
+obj_num_set = [2]
+# obj_num_set = [2, 3, 4, 5, 6]
 human_action_set = [3]
 all_matrices_dict = dict()
 states_edges_num = dict()
@@ -202,16 +205,77 @@ for obj_num in obj_num_set:
           
         #----compute DFA----
         #reach_avoid = '! obstacle U target'
-        statenum = 3
-        init = 1
-        edges = {(1, 1): ['00'],
-                (1, 2): ['01' '11'],
-                (1, 3): ['10'],
-                (2, 2): ['00', '01', '10', '11'],
-                (3, 3): ['00', '01', '10', '11'],
-                }
-        aps = ['obstacle', 'target']
-        acc = [[{2}]]
+        # statenum = 3
+        # init = 1
+        # edges = {(1, 1): ['00'],
+        #         (1, 2): ['01' '11'],
+        #         (1, 3): ['10'],
+        #         (2, 2): ['00', '01', '10', '11'],
+        #         (3, 3): ['00', '01', '10', '11'],
+        #         }
+        # aps = ['obstacle', 'target']
+        # acc = [[{2}]]
+        # dfa = Dfa(statenum, init, edges, aps, acc)
+
+
+        cmd = "./LydiaSyft --spec-file goal.ltlf"
+        out = subprocess.check_output(cmd, shell=True)
+        lines = str(out).split('\\n')
+        print(lines)
+        aps = []
+        edges = {}
+
+        for line in lines:
+            if "Number of states" in line:
+                statenum = int(line[-1])
+                continue
+            if "DFA for formula with free variables:" in line:
+                items = line.split("DFA for formula with free variables: ")
+                line = items[1]
+                for item in line.split(' '):
+                    if item != '':
+                        aps.append(item.strip(' '))
+                continue
+
+            if "Initial state" in line:
+                init = int(line[-1])+1
+                continue
+            if "Accepting states" in line:
+                items = line.split("Accepting states: ")
+                acclist = []
+                for item in items[1].split(' '):
+                    if item != '':
+                        acclist.append(int(item.strip(' '))+1)
+                acc = [[set(acclist)]]
+                continue
+            if "->" in line:
+                items = line.split(' ')
+                curr = int(items[1].strip(':'))+1
+                con = items[2]
+                succ = int(items[5].strip(' '))+1
+                cons = [con]
+                if 'X' in con:
+                    flag = True
+                else:
+                    flag = False
+                while flag == True:
+                    c = len(cons)
+                    for item in cons:
+                        if 'X' in item:
+                            item_0 = item.replace('X', '0', 1)
+                            item_1 = item.replace('X', '1', 1)
+                            cons.remove(item)
+                            cons.append(item_0)
+                            cons.append(item_1)
+                            flag = True
+                    if c == len(cons):
+                        flag = False
+                if (curr, succ) in edges.keys():
+                    for item in cons:
+                        edges[(curr, succ)].append(item)
+                else:
+                    edges[(curr, succ)] = cons
+                continue
         dfa = Dfa(statenum, init, edges, aps, acc)
         print('DFA done.')
 
